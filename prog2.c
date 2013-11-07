@@ -142,9 +142,8 @@ struct pkt packet;
     }
 
     //check the packet's checksum against currPkt's checksum
-    int pktNotCorrupt = packet.checksum == calc_checksum(packet);
-    int pktCorrectChksum = packet.checksum == currPkt.checksum;
-    if (pktNotCorrupt && pktCorrectChksum) {
+    int tmpChecksum = calc_checksum(packet);
+    if (packet.checksum == tmpChecksum) {
         if (TRACE == 2) {
             printf("    ** packet received is not corrupted\n");
         }
@@ -152,13 +151,13 @@ struct pkt packet;
         if (packet.acknum == ACK) {
             //stop the timer
             stoptimer(0);
-
-            //'A' is no longer busy since it's done working on the packet
-            isBusy = 0;
-
+            
             //get and calculate the timeoutinterval
             sampleRTT = simtime - tmpTime;
             A_set_timeout();
+
+            //'A' is no longer busy since it's done working on the packet
+            isBusy = 0;
 
             if (TRACE == 2) {
                 printf("    ** packet contains an ACK. 'A' is no longer busy\n");
@@ -228,9 +227,9 @@ struct pkt packet;
 
         //check expected seqnum aginst seqnum in packet
         if (expectedSeq == packet.seqnum) {
-            //send ack with checksum
-            rcvPkt.checksum = packet.checksum;
+            //send ack
             rcvPkt.acknum = ACK;
+            rcvPkt.checksum = calc_checksum(rcvPkt);
             if (TRACE == 2) {
                 printf("    ** 'B' sending ACK to layer3\n");
             }
@@ -250,9 +249,9 @@ struct pkt packet;
             }
         } else {
             //maybe B's previous ack was lost
-            //send ack with checksum
-            rcvPkt.checksum = packet.checksum;
+            //resend ack
             rcvPkt.acknum = ACK;
+            rcvPkt.checksum = calc_checksum(rcvPkt);
             if (TRACE == 2) {
                 printf("    *- 'B' resending ACK to layer3\n");
             }
@@ -263,11 +262,11 @@ struct pkt packet;
         if (TRACE == 2) {
             printf("    -- packet received is corrupted\n");
 
-            //send nack with checksum
-            rcvPkt.checksum = packet.checksum;
+            //send nak
             rcvPkt.acknum = NAK;
+            rcvPkt.checksum = calc_checksum(rcvPkt);
             if (TRACE == 2) {
-                printf("    *- 'B' sending NAK to layer3\n");
+                printf("    -- 'B' sending NAK to layer3\n");
             }
             tolayer3(1, rcvPkt);
         }
