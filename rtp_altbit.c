@@ -48,6 +48,7 @@ struct pkt {
 /* Global Variables for A & B*/
 int NAK = 0;
 int ACK = 1;
+int pkg_success = 0;
 /* Global Variables for A*/
 int currSeq; //current sequence number
 int isBusy; //boolean if A is still working on msg with B, 0 = false
@@ -146,40 +147,33 @@ struct pkt packet;
             printf("    ** packet received is not corrupted\n");
         }
 
-        //check for matching seqnum is not necessary, but makes checking complete
-        if (packet.seqnum == currSeq) {
-            if (packet.acknum == ACK) {
-                //stop the timer
-                stoptimer(0);
+        if (packet.acknum == ACK) {
+            //stop the timer
+            stoptimer(0);
 
-                //get and calculate the timeoutinterval
-                sampleRTT = simtime - tmpTime;
-                A_set_timeout();
+            //get and calculate the timeoutinterval
+            sampleRTT = simtime - tmpTime;
+            A_set_timeout();
 
-                //set next seq num
-                if (currSeq == 0) {
-                    currSeq = 1;
-                } else {
-                    currSeq = 0;
-                }
-
-                //'A' is no longer busy since it's done working on the packet
-                isBusy = 0;
-
-                if (TRACE == 2) {
-                    printf("    ** packet contains an ACK. 'A' is no longer busy\n");
-                }
-            } else if (packet.acknum == NAK) {
-                if (TRACE == 2) {
-                    printf("    -- packet contains a NAK. Wait for retransmission\n");
-                }
+            //set next seq num
+            if (currSeq == 0) {
+                currSeq = 1;
+            } else {
+                currSeq = 0;
             }
-        } else {
-            //this should not occur...
+
+            //'A' is no longer busy since it's done working on the packet
+            isBusy = 0;
+
             if (TRACE == 2) {
-                printf("    -- packet.seqnum does not match currSeq! \n");
+                printf("    ** packet contains an ACK. 'A' is no longer busy\n");
+            }
+        } else if (packet.acknum == NAK) {
+            if (TRACE == 2) {
+                printf("    -- packet contains a NAK. Wait for retransmission\n");
             }
         }
+
     } else {
         if (TRACE == 2) {
             printf("    -- packet received is corrupted. Wait for retransmission\n");
@@ -196,6 +190,9 @@ A_timerinterrupt() {
         printf("    -- 'A' resending packet to layer3\n");
     }
     tolayer3(0, currPkt);
+
+    //save current time (used for calculating timeoutInterval later)
+    tmpTime = simtime;
 
     //start timer
     starttimer(0, timeoutInterval);
@@ -241,27 +238,22 @@ struct pkt packet;
 
         //check expected seqnum against seqnum in packet
         if (expectedSeq == packet.seqnum) {
+            //message successfully received
+            pkg_success++;
             //extract and deliver message to layer5 
-            char data[20];
-            int i;
-            for (i = 0; i < 20; i++) {
-                data[i] = packet.payload[i];
-            }
             if (TRACE == 2) {
                 printf("    ** 'B' sending msg to layer5\n");
+                printf("    *- (# msgs to layer5 so far: %d)\n",pkg_success);
             }
-            tolayer5(1, data);
+            tolayer5(1, packet.payload);
 
-            //send ack
-            rcvPkt.seqnum = expectedSeq;
+            //send packet with ACK, seqnum, and checksum
             rcvPkt.acknum = ACK;
             rcvPkt.checksum = calc_checksum(rcvPkt);
             if (TRACE == 2) {
                 printf("    ** 'B' sending ACK to layer3\n");
             }
             tolayer3(1, rcvPkt);
-
-
 
             //update expected seq number
             if (expectedSeq == 0) {
