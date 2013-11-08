@@ -72,21 +72,15 @@ struct msg message;
 
     //only send if there's no outstanding, unacked msg to B
     if (!isBusy) {
+        //A is now busy trying to sending a msg to B
+        isBusy = 1;
+
         if (TRACE == 2) {
             printf("    ** 'A' is not busy and accepts the msg\n");
         }
 
-        //A is now busy trying to sending a msg to B
-        isBusy = 1;
-
         //set seq num
         currPkt.seqnum = currSeq;
-        //set next seq num
-        if (currSeq == 0) {
-            currSeq = 1;
-        } else {
-            currSeq = 0;
-        }
 
         //place message into payload
         int i;
@@ -125,6 +119,10 @@ A_set_timeout() {
     devRTT = (1 - beta) * devRTT + beta * fabsf(sampleRTT - estimatedRTT); //fabsf = absolute value of
 
     timeoutInterval = estimatedRTT + 4 * devRTT;
+
+    if (TRACE == 2) {
+        printf("    *- (New timeoutInterval: %f)\n", timeoutInterval);
+    }
 }
 
 B_output(message) /* need be completed only for extra credit */
@@ -148,30 +146,46 @@ struct pkt packet;
             printf("    ** packet received is not corrupted\n");
         }
 
-        if (packet.acknum == ACK) {
-            //stop the timer
-            stoptimer(0);
-            
-            //get and calculate the timeoutinterval
-            sampleRTT = simtime - tmpTime;
-            A_set_timeout();
+        //check for matching seqnum is not necessary, but makes checking complete
+        if (packet.seqnum == currSeq) {
+            if (packet.acknum == ACK) {
+                //stop the timer
+                stoptimer(0);
 
-            //'A' is no longer busy since it's done working on the packet
-            isBusy = 0;
+                //get and calculate the timeoutinterval
+                sampleRTT = simtime - tmpTime;
+                A_set_timeout();
 
-            if (TRACE == 2) {
-                printf("    ** packet contains an ACK. 'A' is no longer busy\n");
+                //set next seq num
+                if (currSeq == 0) {
+                    currSeq = 1;
+                } else {
+                    currSeq = 0;
+                }
+
+                //'A' is no longer busy since it's done working on the packet
+                isBusy = 0;
+
+                if (TRACE == 2) {
+                    printf("    ** packet contains an ACK. 'A' is no longer busy\n");
+                }
+            } else if (packet.acknum == NAK) {
+                if (TRACE == 2) {
+                    printf("    -- packet contains a NAK. Wait for retransmission\n");
+                }
             }
-        } else if (packet.acknum == NAK) {
+        } else {
+            //this should not occur...
             if (TRACE == 2) {
-                printf("    -- packet contains a NAK. Wait for retransmission\n");
+                printf("    -- packet.seqnum does not match currSeq! \n");
             }
         }
     } else {
         if (TRACE == 2) {
-            printf("    -- packet received is corrupted\n");
+            printf("    -- packet received is corrupted. Wait for retransmission\n");
         }
     }
+
 }
 
 /* called when A's timer goes off */
@@ -225,9 +239,21 @@ struct pkt packet;
             printf("    ** packet received is not corrupted\n");
         }
 
-        //check expected seqnum aginst seqnum in packet
+        //check expected seqnum against seqnum in packet
         if (expectedSeq == packet.seqnum) {
+            //extract and deliver message to layer5 
+            char data[20];
+            int i;
+            for (i = 0; i < 20; i++) {
+                data[i] = packet.payload[i];
+            }
+            if (TRACE == 2) {
+                printf("    ** 'B' sending msg to layer5\n");
+            }
+            tolayer5(1, data);
+
             //send ack
+            rcvPkt.seqnum = expectedSeq;
             rcvPkt.acknum = ACK;
             rcvPkt.checksum = calc_checksum(rcvPkt);
             if (TRACE == 2) {
@@ -235,11 +261,7 @@ struct pkt packet;
             }
             tolayer3(1, rcvPkt);
 
-            //send message to layer5 this good packet           
-            if (TRACE == 2) {
-                printf("    ** 'B' sending msg to layer5\n");
-            }
-            tolayer5(1, packet.payload);
+
 
             //update expected seq number
             if (expectedSeq == 0) {
