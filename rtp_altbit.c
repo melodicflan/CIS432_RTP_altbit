@@ -49,6 +49,7 @@ struct pkt {
 int NAK = 0;
 int ACK = 1;
 int pkg_success = 0;
+int pkg_arrival = 0;
 /* Global Variables for A*/
 int currSeq; //current sequence number
 int isBusy; //boolean if A is still working on msg with B, 0 = false
@@ -67,6 +68,7 @@ struct pkt rcvPkt; //packet used to sending back ACK/NACK, chcksum to A
 A_output(message)
 struct msg message;
 {
+    pkg_arrival++;
     if (TRACE == 2) {
         printf("    ** 'A' receives call from layer5\n");
     }
@@ -243,7 +245,7 @@ struct pkt packet;
             //extract and deliver message to layer5 
             if (TRACE == 2) {
                 printf("    ** 'B' sending msg to layer5\n");
-                printf("    *- (# msgs to layer5 so far: %d)\n",pkg_success);
+                printf("    *- (# msgs to layer5 thus far: %d/%d)\n",pkg_success,pkg_arrival);
             }
             tolayer5(1, packet.payload);
 
