@@ -245,7 +245,8 @@ struct pkt packet;
             //extract and deliver message to layer5 
             if (TRACE == 2) {
                 printf("    ** 'B' sending msg to layer5\n");
-                printf("    *- (# msgs to layer5 thus far: %d/%d)\n",pkg_success,pkg_arrival);
+                //used to see how often is 'A' busy
+                //printf("    *- (# msgs to layer5 thus far: %d/%d)\n",pkg_success,pkg_arrival);
             }
             tolayer5(1, packet.payload);
 
