@@ -46,7 +46,7 @@ struct pkt {
  * CIS432
 /*********/
 /* Global Variables for A & B*/
-int NAK = 0;
+int NACK = -1;
 int ACK = 1;
 int pkg_success = 0;
 int pkg_arrival = 0;
@@ -55,14 +55,14 @@ int currSeq; //current sequence number
 int isBusy; //boolean if A is still working on msg with B, 0 = false
 struct pkt currPkt; //the current packet 
 float sampleRTT;
-float tmpTime; //saves time when packet was sent from A to B
+float currTime;
 float estimatedRTT;
 float devRTT;
 float timeoutInterval;
 
 /* Global Variables for B*/
-int expectedSeq; //what B expects for a seq number in arriving packet
-struct pkt rcvPkt; //packet used to sending back ACK/NACK, chcksum to A
+int expectedseqnum; //what B expects for a seq number in arriving packet
+struct pkt bPkt; //packet used to sending back ACK/NACK, chcksum to A
 
 /* called from layer 5, passed the data to be sent to other side */
 A_output(message)
@@ -96,12 +96,12 @@ struct msg message;
 
         //send pkt
         if (TRACE == 2) {
-            printf("    ** 'A' sends made packet to layer3\n");
+            printf("    ** 'A' sends made packet%d to layer3\n", currSeq);
         }
         tolayer3(0, currPkt);
 
         //save current time (used for calculating timeoutInterval later)
-        tmpTime = simtime;
+        currTime = simtime;
 
         //start timer
         starttimer(0, timeoutInterval);
@@ -114,7 +114,7 @@ struct msg message;
 }
 
 /* Helper method to calculate timeout*/
-A_set_timeout() {
+A_calc_timeout() {
     float alpha = 0.125;
     estimatedRTT = (1 - alpha) * estimatedRTT + alpha*sampleRTT;
 
@@ -122,13 +122,10 @@ A_set_timeout() {
     devRTT = (1 - beta) * devRTT + beta * fabsf(sampleRTT - estimatedRTT); //fabsf = absolute value of
 
     timeoutInterval = estimatedRTT + 4 * devRTT;
-
-    if (TRACE == 2) {
-        printf("    *- (New timeoutInterval: %f)\n", timeoutInterval);
-    }
 }
 
-B_output(message) /* need be completed only for extra credit */
+/* need be completed only for extra credit */
+B_output(message)
 struct msg message;
 {
 
@@ -147,17 +144,18 @@ struct pkt packet;
     if (packet.checksum == tmpChecksum) {
         if (TRACE == 2) {
             printf("    ** packet received is not corrupted\n");
+            printf("    ** 'A' expects seqnum%d\n", currSeq);
         }
 
-        if (packet.acknum == ACK) {
+        if (packet.acknum == ACK && packet.seqnum == currSeq) {
             //stop the timer
             stoptimer(0);
 
             //get and calculate the timeoutinterval
-            sampleRTT = simtime - tmpTime;
-            A_set_timeout();
+            sampleRTT = simtime - currTime;
+            A_calc_timeout();
 
-            //set next seq num
+            //set next seqnum
             if (currSeq == 0) {
                 currSeq = 1;
             } else {
@@ -168,11 +166,16 @@ struct pkt packet;
             isBusy = 0;
 
             if (TRACE == 2) {
-                printf("    ** packet contains an ACK. 'A' is no longer busy\n");
+                printf("    ** packet contains an ACK%d. 'A' is no longer busy\n", packet.seqnum);
+                printf("    *- (New timeoutInterval: %f)\n", timeoutInterval);
             }
-        } else if (packet.acknum == NAK) {
+        } else if (packet.acknum == NACK) {
             if (TRACE == 2) {
-                printf("    -- packet contains a NAK. Wait for retransmission\n");
+                printf("    -- packet contains a NACK. Wait for retransmission\n", packet.seqnum);
+            }
+        } else if (packet.seqnum != currSeq) {
+            if (TRACE == 2) {
+                printf("    -- 'A' expected seqnum%d and received seqnum%d mismatch. Wait for retransmission\n", currSeq, packet.seqnum);
             }
         }
 
@@ -189,12 +192,12 @@ A_timerinterrupt() {
     //send pkt
     if (TRACE == 2) {
         printf("    -- 'A' timed out\n");
-        printf("    -- 'A' resending packet to layer3\n");
+        printf("    -- 'A' resending packet%d to layer3\n", currSeq);
     }
     tolayer3(0, currPkt);
 
     //save current time (used for calculating timeoutInterval later)
-    tmpTime = simtime;
+    currTime = simtime;
 
     //start timer
     starttimer(0, timeoutInterval);
@@ -216,7 +219,7 @@ A_init() {
     }
     //init timer variables
     sampleRTT = 0;
-    tmpTime = 0;
+    currTime = 0;
     estimatedRTT = 0;
     devRTT = 0;
     timeoutInterval = 20;
@@ -235,57 +238,60 @@ struct pkt packet;
     int tmpChecksum = calc_checksum(packet);
     if (packet.checksum == tmpChecksum) {
         if (TRACE == 2) {
-            printf("    ** packet received is not corrupted\n");
+            printf("    ** packet received is not corrupt\n");
+            printf("    ** 'B' expects seqnum%d, received seqnum%d\n", expectedseqnum, packet.seqnum);
         }
 
         //check expected seqnum against seqnum in packet
-        if (expectedSeq == packet.seqnum) {
+        if (expectedseqnum == packet.seqnum) {
             //message successfully received
-            pkg_success++;
-            //extract and deliver message to layer5 
+            pkg_success++;        
             if (TRACE == 2) {
                 printf("    ** 'B' sending msg to layer5\n");
                 //used to see how often is 'A' busy
                 //printf("    *- (# msgs to layer5 thus far: %d/%d)\n",pkg_success,pkg_arrival);
             }
+            //extract and deliver message to layer5 
             tolayer5(1, packet.payload);
 
             //send packet with ACK, seqnum, and checksum
-            rcvPkt.acknum = ACK;
-            rcvPkt.checksum = calc_checksum(rcvPkt);
+            bPkt.acknum = ACK;
+            bPkt.seqnum = expectedseqnum;
+            bPkt.checksum = calc_checksum(bPkt);
             if (TRACE == 2) {
-                printf("    ** 'B' sending ACK to layer3\n");
+                printf("    ** 'B' sending ACK%d to layer3\n", bPkt.seqnum);
             }
-            tolayer3(1, rcvPkt);
+            tolayer3(1, bPkt);
 
             //update expected seq number
-            if (expectedSeq == 0) {
-                expectedSeq = 1;
+            if (expectedseqnum == 0) {
+                expectedseqnum = 1;
             } else {
-                expectedSeq = 0;
+                expectedseqnum = 0;
             }
         } else {
             //maybe B's previous ack was lost
             //resend ack
-            rcvPkt.acknum = ACK;
-            rcvPkt.checksum = calc_checksum(rcvPkt);
+            bPkt.acknum = ACK;
+            bPkt.seqnum = packet.seqnum;
+            bPkt.checksum = calc_checksum(bPkt);
             if (TRACE == 2) {
-                printf("    *- 'B' resending ACK to layer3\n");
+                printf("    -- 'B' resending ACK%d to layer3\n", bPkt.seqnum);
             }
-            tolayer3(1, rcvPkt);
+            tolayer3(1, bPkt);
         }
 
     } else {
         if (TRACE == 2) {
             printf("    -- packet received is corrupted\n");
 
-            //send nak
-            rcvPkt.acknum = NAK;
-            rcvPkt.checksum = calc_checksum(rcvPkt);
+            //send NACK
+            bPkt.acknum = NACK;
+            bPkt.checksum = calc_checksum(bPkt);
             if (TRACE == 2) {
-                printf("    -- 'B' sending NAK to layer3\n");
+                printf("    -- 'B' sending NACK to layer3\n");
             }
-            tolayer3(1, rcvPkt);
+            tolayer3(1, bPkt);
         }
     }
 }
@@ -299,15 +305,15 @@ B_timerinterrupt() {
 /* entity B routines are called. You can use it to do any initialization */
 B_init() {
     //init variables
-    expectedSeq = 0;
+    expectedseqnum = 0;
 
     //init standard return-to-A packet
-    rcvPkt.seqnum = 0;
-    rcvPkt.acknum = 0;
-    rcvPkt.checksum = 0;
+    bPkt.seqnum = 0;
+    bPkt.acknum = 0;
+    bPkt.checksum = 0;
     int i;
     for (i = 0; i < 20; i++) {
-        rcvPkt.payload[i] = 0;
+        bPkt.payload[i] = 0;
     }
 }
 

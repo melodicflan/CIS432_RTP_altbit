@@ -56,11 +56,11 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/cis432_rdt_altbit.exe
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/cis432_rtp_altbit.exe
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/cis432_rdt_altbit.exe: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/cis432_rtp_altbit.exe: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/cis432_rdt_altbit ${OBJECTFILES} ${LDLIBSOPTIONS} 
+	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/cis432_rtp_altbit ${OBJECTFILES} ${LDLIBSOPTIONS} 
 
 ${OBJECTDIR}/rtp_altbit.o: rtp_altbit.c 
 	${MKDIR} -p ${OBJECTDIR}
@@ -73,7 +73,7 @@ ${OBJECTDIR}/rtp_altbit.o: rtp_altbit.c
 # Clean Targets
 .clean-conf: ${CLEAN_SUBPROJECTS}
 	${RM} -r ${CND_BUILDDIR}/${CND_CONF}
-	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/cis432_rdt_altbit.exe
+	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/cis432_rtp_altbit.exe
 
 # Subprojects
 .clean-subprojects:

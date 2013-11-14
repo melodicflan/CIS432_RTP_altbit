@@ -9,19 +9,19 @@ CND_DISTDIR=dist
 # Debug configuration
 CND_PLATFORM_Debug=Cygwin_4.x-Windows
 CND_ARTIFACT_DIR_Debug=dist/Debug/Cygwin_4.x-Windows
-CND_ARTIFACT_NAME_Debug=cis432_rdt_altbit
-CND_ARTIFACT_PATH_Debug=dist/Debug/Cygwin_4.x-Windows/cis432_rdt_altbit
+CND_ARTIFACT_NAME_Debug=cis432_rtp_altbit
+CND_ARTIFACT_PATH_Debug=dist/Debug/Cygwin_4.x-Windows/cis432_rtp_altbit
 CND_PACKAGE_DIR_Debug=dist/Debug/Cygwin_4.x-Windows/package
-CND_PACKAGE_NAME_Debug=cis432rdtaltbit.tar
-CND_PACKAGE_PATH_Debug=dist/Debug/Cygwin_4.x-Windows/package/cis432rdtaltbit.tar
+CND_PACKAGE_NAME_Debug=cis432rtpaltbit.tar
+CND_PACKAGE_PATH_Debug=dist/Debug/Cygwin_4.x-Windows/package/cis432rtpaltbit.tar
 # Release configuration
 CND_PLATFORM_Release=Cygwin_4.x-Windows
 CND_ARTIFACT_DIR_Release=dist/Release/Cygwin_4.x-Windows
-CND_ARTIFACT_NAME_Release=cis432_rdt_altbit
-CND_ARTIFACT_PATH_Release=dist/Release/Cygwin_4.x-Windows/cis432_rdt_altbit
+CND_ARTIFACT_NAME_Release=cis432_rtp_altbit
+CND_ARTIFACT_PATH_Release=dist/Release/Cygwin_4.x-Windows/cis432_rtp_altbit
 CND_PACKAGE_DIR_Release=dist/Release/Cygwin_4.x-Windows/package
-CND_PACKAGE_NAME_Release=cis432rdtaltbit.tar
-CND_PACKAGE_PATH_Release=dist/Release/Cygwin_4.x-Windows/package/cis432rdtaltbit.tar
+CND_PACKAGE_NAME_Release=cis432rtpaltbit.tar
+CND_PACKAGE_PATH_Release=dist/Release/Cygwin_4.x-Windows/package/cis432rtpaltbit.tar
 #
 # include compiler specific variables
 #
