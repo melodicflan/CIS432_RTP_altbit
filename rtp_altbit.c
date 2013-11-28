@@ -58,6 +58,7 @@ float sampleRTT;
 float currTime;
 float estimatedRTT;
 float devRTT;
+int recordtimeOn; //timeoutInterval flag. don't calculate if the pkt is a re-transmission
 float timeoutInterval;
 
 /* Global Variables for B*/
@@ -102,6 +103,7 @@ struct msg message;
 
         //save current time (used for calculating timeoutInterval later)
         currTime = simtime;
+        recordtimeOn = 1;
 
         //start timer
         starttimer(0, timeoutInterval);
@@ -115,13 +117,15 @@ struct msg message;
 
 /* Helper method to calculate timeout*/
 A_calc_timeout() {
-    float alpha = 0.125;
-    estimatedRTT = (1 - alpha) * estimatedRTT + alpha*sampleRTT;
+    if (recordtimeOn) {
+        float alpha = 0.125;
+        estimatedRTT = (1 - alpha) * estimatedRTT + alpha*sampleRTT;
 
-    float beta = 0.25;
-    devRTT = (1 - beta) * devRTT + beta * fabsf(sampleRTT - estimatedRTT); //fabsf = absolute value of
+        float beta = 0.25;
+        devRTT = (1 - beta) * devRTT + beta * fabsf(sampleRTT - estimatedRTT); //fabsf = absolute value of
 
-    timeoutInterval = estimatedRTT + 4 * devRTT;
+        timeoutInterval = estimatedRTT + 4 * devRTT;
+    }
 }
 
 /* need be completed only for extra credit */
@@ -167,7 +171,11 @@ struct pkt packet;
 
             if (TRACE == 2) {
                 printf("    ** packet contains an ACK%d. 'A' is no longer busy\n", packet.seqnum);
-                printf("    *- (New timeoutInterval: %f)\n", timeoutInterval);
+                if(recordtimeOn){
+                    printf("    *- (New timeoutInterval: %f)\n", timeoutInterval);
+                }else{
+                    printf("    *- (No new timeoutInterval)\n");
+                }
             }
         } else if (packet.acknum == NACK) {
             if (TRACE == 2) {
@@ -196,8 +204,8 @@ A_timerinterrupt() {
     }
     tolayer3(0, currPkt);
 
-    //save current time (used for calculating timeoutInterval later)
-    currTime = simtime;
+    //do not calculate the timeoutinterval if this is a retransmission
+    recordtimeOn = 0;
 
     //start timer
     starttimer(0, timeoutInterval);
@@ -222,6 +230,7 @@ A_init() {
     currTime = 0;
     estimatedRTT = 0;
     devRTT = 0;
+    recordtimeOn = 1;
     timeoutInterval = 20;
 }
 
@@ -245,7 +254,7 @@ struct pkt packet;
         //check expected seqnum against seqnum in packet
         if (expectedseqnum == packet.seqnum) {
             //message successfully received
-            pkg_success++;        
+            pkg_success++;
             if (TRACE == 2) {
                 printf("    ** 'B' sending msg to layer5\n");
                 //used to see how often is 'A' busy
